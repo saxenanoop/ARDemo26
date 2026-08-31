@@ -1,101 +1,882 @@
 <!doctype html>
 <html lang="en">
-    <head>
-        <meta charset="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
-        <title>AR Viewer</title>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no, maximum-scale=1" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <title>AR Experience</title>
 
-        <!-- Updated to more recent versions -->
-        <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-        <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
-        <script src="https://raw.githack.com/donmccurdy/aframe-extras/master/dist/aframe-extras.loaders.min.js"></script>
-        <script src="https://raw.githack.com/AR-js-org/studio-backend/master/src/modules/marker/tools/gesture-detector.js"></script>
-        <script src="https://raw.githack.com/AR-js-org/studio-backend/master/src/modules/marker/tools/gesture-handler.js"></script>
+    <!-- Updated libraries for better compatibility -->
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    <script src="https://raw.githack.com/donmccurdy/aframe-extras/master/dist/aframe-extras.loaders.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/studio-backend/master/src/modules/marker/tools/gesture-detector.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/studio-backend/master/src/modules/marker/tools/gesture-handler.js"></script>
 
-        <style>
-            :root {
-                --ink: #0b0d10;
-                --panel: rgba(11, 13, 16, 0.82);
-                --line: rgba(255, 255, 255, 0.14);
-                --text: #f4f5f6;
-                --text-dim: #a7adb4;
-                --signal-idle: #5b6b7a;
-                --signal-active: #f2a93c;
-                --signal-active-dim: rgba(242, 169, 60, 0.35);
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+        :root {
+            --primary: #6366f1;
+            --primary-light: #818cf8;
+            --primary-dark: #4f46e5;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --bg-dark: #0f172a;
+            --bg-card: rgba(15, 23, 42, 0.85);
+            --text-primary: #f8fafc;
+            --text-secondary: #cbd5e1;
+            --text-muted: #94a3b8;
+            --border: rgba(255, 255, 255, 0.1);
+            --shadow: rgba(0, 0, 0, 0.3);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: var(--bg-dark);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            color: var(--text-primary);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* ---------- Splash Screen ---------- */
+        #splash-screen {
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            transition: opacity 0.6s ease, visibility 0.6s ease;
+        }
+
+        #splash-screen.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        .splash-logo {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 24px;
+            position: relative;
+        }
+
+        .splash-logo::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 20px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            animation: pulse-glow 2s ease-in-out infinite;
+        }
+
+        .splash-logo::after {
+            content: 'AR';
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 28px;
+            font-weight: 700;
+            color: white;
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { 
+                transform: scale(1);
+                box-shadow: 0 0 20px rgba(99, 102, 241, 0.4);
             }
-
-            * {
-                box-sizing: border-box;
+            50% { 
+                transform: scale(1.05);
+                box-shadow: 0 0 40px rgba(99, 102, 241, 0.6);
             }
+        }
 
-            html,
-            body {
-                margin: 0;
-                padding: 0;
-                overflow: hidden;
-                width: 100%;
-                height: 100%;
-                background: var(--ink);
-                font-family: "Inter", system-ui, sans-serif;
-                color: var(--text);
+        .splash-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, var(--text-primary), var(--primary-light));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .splash-subtitle {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-bottom: 32px;
+            text-align: center;
+            max-width: 280px;
+            line-height: 1.5;
+        }
+
+        .splash-loader {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .loader-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--primary);
+            animation: bounce 1.4s ease-in-out infinite both;
+        }
+
+        .loader-dot:nth-child(1) { animation-delay: -0.32s; }
+        .loader-dot:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+
+        /* ---------- Permission Screen ---------- */
+        #permission-screen {
+            position: fixed;
+            inset: 0;
+            z-index: 900;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            padding: 24px;
+        }
+
+        #permission-screen.active {
+            display: flex;
+        }
+
+        .permission-icon {
+            width: 64px;
+            height: 64px;
+            margin-bottom: 20px;
+            background: rgba(99, 102, 241, 0.15);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+        }
+
+        .permission-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 22px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            text-align: center;
+        }
+
+        .permission-text {
+            font-size: 14px;
+            color: var(--text-secondary);
+            text-align: center;
+            max-width: 320px;
+            line-height: 1.6;
+            margin-bottom: 24px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            border: none;
+            padding: 14px 32px;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        /* ---------- Main HUD ---------- */
+        #hud {
+            position: fixed;
+            inset: 0;
+            z-index: 100;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        #hud.visible {
+            opacity: 1;
+        }
+
+        /* Top Bar */
+        .top-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .app-badge {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--bg-card);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 10px 14px;
+            box-shadow: 0 4px 12px var(--shadow);
+        }
+
+        .app-icon {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+        }
+
+        .app-info h3 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .app-info p {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin: 2px 0 0;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--bg-card);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border);
+            border-radius: 100px;
+            padding: 8px 14px;
+            box-shadow: 0 4px 12px var(--shadow);
+            transition: all 0.3s ease;
+        }
+
+        .status-indicator.found {
+            border-color: rgba(16, 185, 129, 0.3);
+            background: rgba(16, 185, 129, 0.1);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--warning);
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .status-dot::before {
+            content: '';
+            position: absolute;
+            inset: -3px;
+            border-radius: 50%;
+            background: var(--warning);
+            opacity: 0.3;
+            animation: pulse-ring 2s ease-out infinite;
+        }
+
+        .status-indicator.found .status-dot {
+            background: var(--success);
+        }
+
+        .status-indicator.found .status-dot::before {
+            background: var(--success);
+        }
+
+        @keyframes pulse-ring {
+            0% { transform: scale(1); opacity: 0.3; }
+            100% { transform: scale(2); opacity: 0; }
+        }
+
+        .status-label {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            transition: color 0.3s ease;
+        }
+
+        .status-indicator.found .status-label {
+            color: var(--success);
+        }
+
+        /* Viewfinder */
+        .viewfinder-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 240px;
+            height: 240px;
+            pointer-events: none;
+        }
+
+        .viewfinder {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+
+        .corner {
+            position: absolute;
+            width: 32px;
+            height: 32px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .corner.tl { top: 0; left: 0; border-right: none; border-bottom: none; border-radius: 8px 0 0 0; }
+        .corner.tr { top: 0; right: 0; border-left: none; border-bottom: none; border-radius: 0 8px 0 0; }
+        .corner.bl { bottom: 0; left: 0; border-right: none; border-top: none; border-radius: 0 0 0 8px; }
+        .corner.br { bottom: 0; right: 0; border-left: none; border-top: none; border-radius: 0 0 8px 0; }
+
+        .viewfinder.searching .corner {
+            animation: scan-pulse 2s ease-in-out infinite;
+        }
+
+        .viewfinder.searching .corner.tr { animation-delay: 0.2s; }
+        .viewfinder.searching .corner.bl { animation-delay: 0.4s; }
+        .viewfinder.searching .corner.br { animation-delay: 0.6s; }
+
+        @keyframes scan-pulse {
+            0%, 100% { opacity: 0.4; border-color: rgba(255, 255, 255, 0.3); }
+            50% { opacity: 1; border-color: rgba(255, 255, 255, 0.7); }
+        }
+
+        .viewfinder.found .corner {
+            border-color: var(--success);
+            opacity: 1;
+            transform: scale(1.1);
+        }
+
+        .viewfinder.found .corner.tl { transform: translate(-6px, -6px) scale(1.1); }
+        .viewfinder.found .corner.tr { transform: translate(6px, -6px) scale(1.1); }
+        .viewfinder.found .corner.bl { transform: translate(-6px, 6px) scale(1.1); }
+        .viewfinder.found .corner.br { transform: translate(6px, 6px) scale(1.1); }
+
+        .scan-line {
+            position: absolute;
+            left: 50%;
+            top: 0;
+            width: 2px;
+            height: 100%;
+            background: linear-gradient(to bottom, transparent, var(--primary), transparent);
+            opacity: 0;
+            transform: translateX(-50%);
+        }
+
+        .viewfinder.searching .scan-line {
+            opacity: 0.6;
+            animation: scan-vertical 2s ease-in-out infinite;
+        }
+
+        @keyframes scan-vertical {
+            0% { transform: translateX(-50%) translateY(-100%); }
+            100% { transform: translateX(-50%) translateY(100%); }
+        }
+
+        /* Bottom Card */
+        .instruction-card {
+            pointer-events: auto;
+            background: var(--bg-card);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 18px 20px;
+            box-shadow: 0 8px 24px var(--shadow);
+            max-width: 380px;
+            width: 100%;
+            margin: 0 auto;
+            transition: all 0.3s ease;
+        }
+
+        .instruction-card.found {
+            border-color: rgba(16, 185, 129, 0.3);
+            background: rgba(16, 185, 129, 0.08);
+        }
+
+        .instruction-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+
+        .instruction-icon {
+            width: 36px;
+            height: 36px;
+            background: rgba(99, 102, 241, 0.15);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+            transition: all 0.3s ease;
+        }
+
+        .instruction-card.found .instruction-icon {
+            background: rgba(16, 185, 129, 0.15);
+        }
+
+        .instruction-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 16px;
+            font-weight: 600;
+            margin: 0;
+            flex: 1;
+        }
+
+        .instruction-body {
+            font-size: 13px;
+            line-height: 1.6;
+            color: var(--text-secondary);
+            margin: 0;
+        }
+
+        .tips-list {
+            list-style: none;
+            margin: 12px 0 0;
+            padding: 0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .tip-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            color: var(--text-muted);
+            background: rgba(255, 255, 255, 0.05);
+            padding: 6px 10px;
+            border-radius: 6px;
+        }
+
+        .tip-icon {
+            font-size: 12px;
+        }
+
+        /* Error Overlay */
+        #error-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 2000;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(10px);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+
+        #error-overlay.active {
+            display: flex;
+        }
+
+        .error-icon {
+            width: 64px;
+            height: 64px;
+            background: rgba(239, 68, 68, 0.15);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            margin-bottom: 20px;
+        }
+
+        .error-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 22px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            text-align: center;
+        }
+
+        .error-message {
+            font-size: 14px;
+            color: var(--text-secondary);
+            text-align: center;
+            max-width: 320px;
+            line-height: 1.6;
+            margin-bottom: 24px;
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+            padding: 12px 28px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+            .viewfinder-container {
+                width: 200px;
+                height: 200px;
             }
-
-            /* ---------- Loading screen ---------- */
-
-            #loading-screen {
-                position: fixed;
-                inset: 0;
-                z-index: 50;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                gap: 20px;
-                background: var(--ink);
-                transition: opacity 0.5s ease, visibility 0.5s ease;
+            
+            .splash-title {
+                font-size: 24px;
             }
+        }
 
-            #loading-screen.hidden {
-                opacity: 0;
-                visibility: hidden;
-                pointer-events: none;
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
             }
+        }
+    </style>
+</head>
 
-            .ring {
-                width: 46px;
-                height: 46px;
-                border-radius: 50%;
-                border: 2px solid var(--line);
-                border-top-color: var(--signal-active);
-                animation: spin 0.9s linear infinite;
-            }
+<body>
+    <!-- Splash Screen -->
+    <div id="splash-screen">
+        <div class="splash-logo"></div>
+        <h1 class="splash-title">AR Experience</h1>
+        <p class="splash-subtitle">Point your camera at the marker to reveal augmented reality content</p>
+        <div class="splash-loader">
+            <div class="loader-dot"></div>
+            <div class="loader-dot"></div>
+            <div class="loader-dot"></div>
+        </div>
+    </div>
 
-            @keyframes spin {
-                to {
-                    transform: rotate(360deg);
+    <!-- Permission Screen -->
+    <div id="permission-screen">
+        <div class="permission-icon">📷</div>
+        <h2 class="permission-title">Camera Access Required</h2>
+        <p class="permission-text">
+            To use this AR experience, we need access to your camera. 
+            Your privacy is important - we don't store or share any video data.
+        </p>
+        <button class="btn-primary" id="grant-permission-btn">Enable Camera</button>
+    </div>
+
+    <!-- Error Overlay -->
+    <div id="error-overlay">
+        <div class="error-icon">⚠️</div>
+        <h2 class="error-title">Camera Access Denied</h2>
+        <p class="error-message" id="error-text">
+            Unable to access your camera. Please check your browser settings and ensure you've granted camera permissions.
+        </p>
+        <button class="btn-secondary" id="retry-btn">Try Again</button>
+    </div>
+
+    <!-- Main HUD -->
+    <div id="hud">
+        <div class="top-bar">
+            <div class="app-badge">
+                <div class="app-icon">AR</div>
+                <div class="app-info">
+                    <h3>AR Viewer</h3>
+                    <p>Marker-based AR</p>
+                </div>
+            </div>
+            
+            <div class="status-indicator" id="status-indicator">
+                <div class="status-dot"></div>
+                <span class="status-label" id="status-label">Searching</span>
+            </div>
+        </div>
+
+        <div class="viewfinder-container">
+            <div class="viewfinder searching" id="viewfinder">
+                <div class="corner tl"></div>
+                <div class="corner tr"></div>
+                <div class="corner bl"></div>
+                <div class="corner br"></div>
+                <div class="scan-line"></div>
+            </div>
+        </div>
+
+        <div class="instruction-card" id="instruction-card">
+            <div class="instruction-header">
+                <div class="instruction-icon">🎯</div>
+                <h3 class="instruction-title" id="instruction-title">Find the Marker</h3>
+            </div>
+            <p class="instruction-body" id="instruction-body">
+                Point your camera at the AR marker to unlock the 3D experience.
+            </p>
+            <ul class="tips-list" id="tips-list">
+                <li class="tip-item">
+                    <span class="tip-icon">💡</span>
+                    <span>Good lighting</span>
+                </li>
+                <li class="tip-item">
+                    <span class="tip-icon">📐</span>
+                    <span>Keep it flat</span>
+                </li>
+                <li class="tip-item">
+                    <span class="tip-icon">🎥</span>
+                    <span>Full view</span>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- AR Scene -->
+    <a-scene
+        vr-mode-ui="enabled: false;"
+        loading-screen="enabled: false;"
+        renderer="logarithmicDepthBuffer: true; antialias: true; alpha: false;"
+        arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3;"
+        id="scene"
+        gesture-detector
+    >
+        <a-assets>
+            <a-asset-item id="animated-asset" src="assets/asset.gltf"></a-asset-item>
+        </a-assets>
+
+        <a-marker
+            id="animated-marker"
+            type="pattern"
+            preset="custom"
+            url="assets/marker.patt"
+            raycaster="objects: .clickable"
+            emitevents="true"
+            cursor="fuse: false; rayOrigin: mouse;"
+        >
+            <a-entity
+                id="bowser-model"
+                scale="1.710778670758883 1.710778670758883 1.710778670758883"
+                animation-mixer="loop: repeat"
+                gltf-model="#animated-asset"
+                class="clickable"
+                gesture-handler
+            ></a-entity>
+        </a-marker>
+
+        <a-entity camera></a-entity>
+    </a-scene>
+
+    <script>
+        // DOM Elements
+        const splashScreen = document.getElementById('splash-screen');
+        const permissionScreen = document.getElementById('permission-screen');
+        const errorOverlay = document.getElementById('error-overlay');
+        const hud = document.getElementById('hud');
+        const grantPermissionBtn = document.getElementById('grant-permission-btn');
+        const retryBtn = document.getElementById('retry-btn');
+        const statusIndicator = document.getElementById('status-indicator');
+        const statusLabel = document.getElementById('status-label');
+        const viewfinder = document.getElementById('viewfinder');
+        const instructionCard = document.getElementById('instruction-card');
+        const instructionTitle = document.getElementById('instruction-title');
+        const instructionBody = document.getElementById('instruction-body');
+        const tipsList = document.getElementById('tips-list');
+        const errorText = document.getElementById('error-text');
+        const scene = document.getElementById('scene');
+
+        // State management
+        let cameraGranted = false;
+        let markerFound = false;
+
+        // Check if running on HTTPS or localhost
+        function isSecureContext() {
+            return window.location.protocol === 'https:' || 
+                   window.location.hostname === 'localhost' || 
+                   window.location.hostname === '127.0.0.1';
+        }
+
+        // Request camera permission
+        async function requestCameraPermission() {
+            try {
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    throw new Error('Camera API not supported in this browser');
                 }
+
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: 'environment',
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    }
+                });
+
+                // Stop test stream immediately
+                stream.getTracks().forEach(track => track.stop());
+                
+                cameraGranted = true;
+                return true;
+            } catch (error) {
+                console.error('Camera permission error:', error);
+                throw error;
+            }
+        }
+
+        // Show error
+        function showError(message) {
+            errorText.textContent = message;
+            errorOverlay.classList.add('active');
+            splashScreen.classList.add('hidden');
+            permissionScreen.classList.remove('active');
+        }
+
+        // Update UI state
+        function updateUIState(found) {
+            markerFound = found;
+            
+            statusIndicator.classList.toggle('found', found);
+            viewfinder.classList.toggle('found', found);
+            viewfinder.classList.toggle('searching', !found);
+            instructionCard.classList.toggle('found', found);
+            
+            statusLabel.textContent = found ? 'Marker Found' : 'Searching';
+            
+            if (found) {
+                instructionTitle.textContent = 'Active';
+                instructionBody.textContent = 'Great! Move around to explore the 3D model from different angles.';
+                tipsList.style.display = 'none';
+            } else {
+                instructionTitle.textContent = 'Find the Marker';
+                instructionBody.textContent = 'Point your camera at the AR marker to unlock the 3D experience.';
+                tipsList.style.display = 'flex';
+            }
+        }
+
+        // Initialize application
+        async function initialize() {
+            // Check secure context
+            if (!isSecureContext()) {
+                showError('This app requires HTTPS. Please access it via a secure connection.');
+                return;
             }
 
-            #loading-screen p {
-                font-family: "Space Grotesk", sans-serif;
-                font-size: 15px;
-                font-weight: 500;
-                color: var(--text-dim);
-                letter-spacing: 0.01em;
+            // Hide splash after brief delay
+            setTimeout(() => {
+                splashScreen.classList.add('hidden');
+                
+                // Show permission screen
+                setTimeout(() => {
+                    permissionScreen.classList.add('active');
+                }, 300);
+            }, 1500);
+        }
+
+        // Start AR experience
+        async function startExperience() {
+            try {
+                permissionScreen.classList.remove('active');
+                
+                // Request camera permission
+                await requestCameraPermission();
+                
+                // Show HUD
+                hud.classList.add('visible');
+                
+                // Listen for scene loaded
+                scene.addEventListener('loaded', () => {
+                    console.log('AR Scene loaded successfully');
+                });
+
+                // Listen for marker events
+                const marker = document.getElementById('animated-marker');
+                if (marker) {
+                    marker.addEventListener('markerFound', () => updateUIState(true));
+                    marker.addEventListener('markerLost', () => updateUIState(false));
+                }
+
+                // Fallback timeout
+                setTimeout(() => {
+                    if (!markerFound) {
+                        console.log('No marker detected yet - this is normal');
+                    }
+                }, 8000);
+
+            } catch (error) {
+                showError(error.message || 'Unable to access camera. Please grant permission and try again.');
             }
+        }
 
-            /* ---------- HUD chrome ---------- */
+        // Event listeners
+        grantPermissionBtn.addEventListener('click', startExperience);
+        
+        retryBtn.addEventListener('click', () => {
+            errorOverlay.classList.remove('active');
+            permissionScreen.classList.add('active');
+        });
 
-            #hud {
-                position: fixed;
-                inset: 0;
-                z-index: 20;
-                pointer-events: none;
-                display: flex;
-                flex-direction: column;
-                justify-content: space-between;
-                padding: max(18px, env(safe-area-inset-top)) 18px max(24px, env(safe-area-inset-bottom));
+        // Handle page visibility changes
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && cameraGranted) {
+                console.log('Page hidden - camera may be paused');
             }
+        });
 
-            .top-bar {
-                display: flex;
+        // Initialize on load
+        window.addEventListener('load', initialize);
+
+        // Prevent default touch behaviors
+        document.addEventListener('touchmove', (e) => {
+            if (e.scale !== 1) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        // Handle orientation changes
+        window.addEventListener('orientationchange', () => {
+            setTimeout(() => {
+                window.scrollTo(0, 0);
+            }, 100);
+        });
+    </script>
+</body>
+</html>
